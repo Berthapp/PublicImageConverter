@@ -1,0 +1,90 @@
+﻿
+
+<div id="dropZone" class="border border-secondary d-flex justify-content-center align-items-center mb-3" style="width: 100%; height: 200px; border-radius: 5px;">
+    Drop images here
+</div>
+<select id="imageTypeSelector" class="form-select form-select-lg mb-3" aria-label=".form-select-lg" onchange="checkIfReadyToConvert()">
+    <option value="" disabled selected>Select an image type</option>
+    <option value="Bmp">BMP</option>
+    <option value="Jpeg">JPEG</option>
+    <option value="Gif">GIF</option>
+    <option value="Tiff">TIFF</option>
+    <option value="Png">PNG</option>
+    <option value="Webp">WEBP</option>
+</select>
+<div class="d-flex justify-content-center align-items-center">
+    <button id="convertButton" class="btn btn-primary" disabled>Convert</button>
+</div>
+<ul id="uploadedFilesList" class="list-group mt-3"></ul>
+
+
+
+<script>
+    document.getElementById('dropZone').addEventListener('drop', handleDrop, false);
+    document.getElementById('dropZone').addEventListener('dragover', handleDragOver, false);
+    document.getElementById('convertButton').addEventListener('click', handleConvert, false);
+
+    let formData = new FormData();
+    let uploadedFiles = [];
+
+    function handleDrop(e) {
+        e.preventDefault();
+
+        for (let i = 0; i < e.dataTransfer.files.length; i++) {
+            let file = e.dataTransfer.files[i];
+            if (file.type.startsWith('image/')) {
+                formData.append('files', file);
+
+                uploadedFiles.push(file.name);
+
+                let li = document.createElement('li');
+                li.innerText = file.name;
+                document.getElementById('uploadedFilesList').appendChild(li);
+            }
+        } 
+        checkIfReadyToConvert(); 
+    }
+
+    function checkIfReadyToConvert() {
+        if (uploadedFiles.length > 0 && document.getElementById('imageTypeSelector').value !== "") {
+            document.getElementById('convertButton').disabled = false;
+        } else {
+            document.getElementById('convertButton').disabled = true;
+        }
+    }
+
+    async function handleConvert() {
+        let selectedImageType = document.getElementById('imageTypeSelector').value;
+        formData.append('targetType', selectedImageType);
+
+        let response = await fetch('/Home/Convert', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'converted_images';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+
+            formData = new FormData();
+            uploadedFiles = [];
+            document.getElementById('uploadedFilesList').innerHTML = '';
+            document.getElementById('convertButton').disabled = true;
+        } else {
+            console.error('Conversion failed:', response.statusText);
+        }
+    }
+
+
+    function handleDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+    }
+</script>
